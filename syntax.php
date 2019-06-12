@@ -140,6 +140,10 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         echo '</a>';
         echo '</div>';
 
+        echo '<div class="amazon_isbn">';
+        echo hsc($data['isbn']);
+        echo '</div>';
+
         if ($param['price'] && $data['price']) {
             echo '<div class="amazon_price">' . hsc($data['price']) . '</div>';
         }
@@ -198,6 +202,10 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
 
         if (preg_match('/<a .* id="titlehref" href=(.*?) /s', $html, $m)) {
             $result['url'] = trim($m[1], '\'"');
+        }
+
+        if (preg_match('/^\d{10}$/', $asin)) {
+            $result['isbn'] = 'ISBN ' . $asin;
         }
 
         $result['img'] = $this->getImageURL($asin, $country);
