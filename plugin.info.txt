@@ -1,0 +1,7 @@
+base   amazonlight
+author Andreas Gohr
+email  andi@splitbrain.org
+date   2019-06-12
+name   amazonlight plugin
+desc   A simpler Amazon plugin
+url    https://www.dokuwiki.org/plugin:amazonlight
