@@ -1,5 +1,7 @@
 .dokuwiki div.amazon {
-    height: 70px;
+    overflow: auto;
+    margin-top: 0.5em;
+    margin-bottom: 1em;
 
     img {
         float: left;
@@ -7,6 +9,12 @@
         padding: 2px;
         border: 1px solid #333;
         background-color: #efefef;
+    }
+
+    div.amazon_title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     div.amazon_isbn{
