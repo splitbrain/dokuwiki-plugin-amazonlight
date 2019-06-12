@@ -102,6 +102,14 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         }
 
         $html = $this->output($data);
+        if (!$html) {
+            if ($data['country'] == 'de') {
+                $renderer->interwikilink('Amazon', 'Amazon.de', 'amazon.de', $data['asin']);
+            } else {
+                $renderer->interwikilink('Amazon', 'Amazon', 'amazon', $data['asin']);
+            }
+        }
+
         $renderer->doc .= $html;
 
         return true;
@@ -198,13 +206,17 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
 
         if (preg_match('/<a .* id="titlehref" [^>]*?>([^<]*?)<\/a>/s', $html, $m)) {
             $result['title'] = $m[1];
+        } else {
+            throw new \Exception('Could not find title in data');
         }
 
         if (preg_match('/<a .* id="titlehref" href=(.*?) /s', $html, $m)) {
             $result['url'] = trim($m[1], '\'"');
+        } else {
+            throw new \Exception('Could not find url in data');
         }
 
-        if (preg_match('/^\d{10}$/', $asin)) {
+        if (preg_match('/^\d{10,13}$/', $asin)) {
             $result['isbn'] = 'ISBN ' . $asin;
         }
 
