@@ -246,7 +246,7 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
             'WS' => '1',
             'tag' => $partner,
         ];
-        $url = 'http://' . $region . '.amazon-adsystem.com/widgets/q?' . buildURLparams($attr, '&');
+        $url = 'https://' . $region . '.amazon-adsystem.com/widgets/q?' . buildURLparams($attr, '&');
 
         return $url;
     }
