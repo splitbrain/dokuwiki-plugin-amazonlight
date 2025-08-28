@@ -7,7 +7,6 @@
 
 $lang['imgw']      = 'Image width';
 $lang['imgh']      = 'Image height';
-$lang['showprice'] = 'Show the lowest Amazon price.';
 $lang['partner_us']     = 'PartnerID for the American Amazon store.';
 $lang['partner_de']     = 'PartnerID for the German Amazon store.';
 $lang['partner_jp']     = 'PartnerID for the Japanese Amazon store.';

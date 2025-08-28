@@ -86,7 +86,6 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         $params = array(
             'imgw' => $this->getConf('imgw'),
             'imgh' => $this->getConf('imgh'),
-            'price' => $this->getConf('showprice'),
         );
         // ...can be overridden
         list($asin, $more) = sexplode(' ', $asin, 2);
@@ -95,11 +94,6 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         if (preg_match('/(\d+)x(\d+)/i', $more, $match)) {
             $params['imgw'] = $match[1];
             $params['imgh'] = $match[2];
-        }
-        if (preg_match('/noprice/i', $more, $match)) {
-            $params['price'] = false;
-        } elseif (preg_match('/(show)?price/i', $more, $match)) {
-            $params['price'] = true;
         }
 
         // correct country given?
@@ -142,7 +136,7 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         global $conf;
 
         try {
-            $data = $this->fetchData($param['asin'], $param['country']);
+            $data = $this->fetchCachedData($param['asin'], $param['country']);
         } catch (Exception $e) {
             msg(hsc($e->getMessage()), -1);
             return false;
@@ -174,12 +168,35 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         echo hsc($data['isbn']);
         echo '</div>';
 
-        if ($param['price'] && $data['price']) {
-            echo '<div class="amazon_price">' . hsc($data['price']) . '</div>';
-        }
         echo '</div>';
 
         return ob_get_clean();
+    }
+
+
+    /**
+     * Forever cache the fetched data
+     *
+     * @throws Exception
+     */
+    protected function fetchCachedData($asin, $country)
+    {
+        $partner = $this->getConf('partner_' . $country);
+
+
+        $cachefile = getCacheName($country . '-' . $asin, '.amazonlight');
+        if (file_exists($cachefile)) {
+            $data = json_decode(file_get_contents($cachefile), true);
+        } else {
+            $data = $this->fetchData($asin, $country);
+            io_saveFile($cachefile, json_encode($data));
+        }
+
+        if ($partner) {
+            $data['url'] .= '?tag=' . $partner;
+        }
+
+        return $data;
     }
 
     /**
@@ -192,13 +209,10 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
      */
     protected function fetchData($asin, $country)
     {
-        $partner = $this->getConf('partner_' . $country);
-        if (!$partner) $partner = 'none';
         $region = self::REGIONS[$country];
 
         // get homepage cookies first
         $this->http->get('https://' . $region);
-
 
         $url = 'https://' . $region . '/dp/' . $asin;
 
@@ -226,10 +240,9 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
             'title' => $this->extract($doc, '#productTitle'),
             'author' => $this->extract($doc, '#bylineInfo a'),
             'rating' => $this->extract($doc, '#averageCustomerReviews span.a-declarative a > span'),
-            'price' => $this->extract($doc, '.priceToPay'),
             'isbn' => $this->extract($doc, '#rpi-attribute-book_details-isbn10 .rpi-attribute-value'),
             'img' => $this->extract($doc, '#imgTagWrapperId img', 'src'),
-            'url' => $url . '?tag=' . $partner,
+            'url' => $url,
         ];
 
         if (!$result['title']) {
