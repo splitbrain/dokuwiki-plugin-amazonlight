@@ -1,27 +1,25 @@
 <?php
+
+use dokuwiki\HTTP\DokuHTTPClient;
+use DOMWrap\Document;
+
 /**
  * DokuWiki Plugin amazonlight (Syntax Component)
  *
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author  Andreas Gohr <andi@splitbrain.org>
  */
-
-// must be run within Dokuwiki
-if (!defined('DOKU_INC')) {
-    die();
-}
-
 class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
 {
 
     /** @var array what regions to use for the different countries */
     const REGIONS = [
-        'us' => 'ws-na',
-        'ca' => 'ws-na',
-        'de' => 'ws-eu',
-        'gb' => 'ws-eu',
-        'fr' => 'ws-eu',
-        'jp' => 'ws-fe',
+        'us' => 'www.amazon.com',
+        'ca' => 'www.amazon.ca',
+        'de' => 'www.amazon.de',
+        'gb' => 'www.amazon.co.uk',
+        'fr' => 'www.amazon.fr',
+        'jp' => 'www.amazon.co.jp',
     ];
 
     /** @inheritDoc */
@@ -125,7 +123,7 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
 
         try {
             $data = $this->fetchData($param['asin'], $param['country']);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             msg(hsc($e->getMessage()), -1);
             return false;
         }
@@ -146,6 +144,10 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         echo '>';
         echo hsc($data['title']);
         echo '</a>';
+        echo '</div>';
+
+        echo '<div class="amazon_author">';
+        echo hsc($data['author']);
         echo '</div>';
 
         echo '<div class="amazon_isbn">';
@@ -174,82 +176,58 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         if (!$partner) $partner = 'none';
         $region = self::REGIONS[$country];
 
-        $attr = [
-            'ServiceVersion' => '20070822',
-            'OneJS' => '1',
-            'Operation' => 'GetAdHtml',
-            'MarketPlace' => strtoupper($country),
-            'source' => 'ss',
-            'ref' => 'as_ss_li_til',
-            'ad_type' => 'product_link',
-            'tracking_id' => $partner,
-            'marketplace' => 'amazon',
-            'region' => strtoupper($country),
-            'placement' => '0670022411',
-            'asins' => $asin,
-            'show_border' => 'true',
-            'link_opens_in_new_window' => 'true',
-        ];
-        $url = 'http://' . $region . '.amazon-adsystem.com/widgets/q?' . buildURLparams($attr, '&');
+        $url = 'https://' . $region . '/dp/' . $asin;
 
         $http = new DokuHTTPClient();
+        $http->headers['User-Agent'] = 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
         $html = $http->get($url);
         if (!$html) {
-            throw new \Exception('Failed to fetch data. Status ' . $http->status);
+            throw new Exception('Failed to fetch data. Status ' . $http->status);
         }
 
-        $result = [];
 
-        if (preg_match('/class="price".*?>(.*?)<\/span>/s', $html, $m)) {
-            $result['price'] = $m[1];
+        $doc = new Document();
+        $doc->html($html);
+
+        $result = [
+            'title' => $this->extract($doc, '#productTitle'),
+            'author' => $this->extract($doc, '#bylineInfo a'),
+            'rating' => $this->extract($doc, '#averageCustomerReviews span.a-declarative a > span'),
+            'price' => $this->extract($doc, '.priceToPay'),
+            'isbn' => $this->extract($doc, '#rpi-attribute-book_details-isbn10 .rpi-attribute-value'),
+            'img' => $this->extract($doc, '#imgTagWrapperId img', 'src'),
+            'url' => $url . '?tag=' . $partner,
+        ];
+
+        if (!$result['title']) {
+            $result['title'] = $this->extract($doc, 'title');
         }
-
-        if (preg_match('/<a .* id="titlehref" [^>]*?>([^<]*?)<\/a>/s', $html, $m)) {
-            $result['title'] = $m[1];
-        } else {
-            throw new \Exception('Could not find title in data');
+        if (!$result['title']) {
+            throw new Exception('Could not find title in data');
         }
-
-        if (preg_match('/<a .* id="titlehref" href=(.*?) /s', $html, $m)) {
-            $result['url'] = trim($m[1], '\'"');
-        } else {
-            throw new \Exception('Could not find url in data');
-        }
-
-        if (preg_match('/^\d{10,13}$/', $asin)) {
-            $result['isbn'] = 'ISBN ' . $asin;
-        }
-
-        $result['img'] = $this->getImageURL($asin, $country);
 
         return $result;
     }
 
     /**
-     * @param $asin
-     * @param $country
+     * Extract text or attribute from a selector
+     *
+     * @param Document $doc
+     * @param string $selector
+     * @param string|null $attr attribute to extract, omit for text
      * @return string
      */
-    protected function getImageURL($asin, $country)
+    protected function extract(Document $doc, string $selector, $attr = null): string
     {
-        $partner = $this->getConf('partner_' . $country);
-        if (!$partner) $partner = 'none';
-        $region = self::REGIONS[$country];
-
-        $attr = [
-            '_encoding' => 'UTF8',
-            'ASIN' => $asin,
-            'Format' => '_SL250_',
-            'ID' => 'AsinImage',
-            'MarketPlace' => strtoupper($country),
-            'ServiceVersion' => '20070822',
-            'WS' => '1',
-            'tag' => $partner,
-        ];
-        $url = 'https://' . $region . '.amazon-adsystem.com/widgets/q?' . buildURLparams($attr, '&');
-
-        return $url;
+        $element = $doc->find($selector)->first();
+        if($element === null) {
+            return '';
+        }
+        if ($attr) {
+            return $element->attr($attr);
+        } else {
+            return $element->text();
+        }
     }
-
 }
 

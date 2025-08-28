@@ -5,8 +5,8 @@
  * @author Andreas Gohr <andi@splitbrain.org>
  */
 
-$conf['imgw']      = 42;
-$conf['imgh']      = 60;
+$conf['imgw']      = 50;
+$conf['imgh']      = 65;
 $conf['showprice'] = 0;
 $conf['partner_us']     = 'splitbrain-20';
 $conf['partner_de']     = 'splitbrain-21';

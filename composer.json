@@ -1,0 +1,12 @@
+{
+    "name": "splitbrain/amazonlight",
+    "authors": [
+        {
+            "name": "Andreas Gohr",
+            "email": "andi@splitbrain.org"
+        }
+    ],
+    "require": {
+        "scotteh/php-dom-wrapper": "^3.0"
+    }
+}
