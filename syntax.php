@@ -219,8 +219,8 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         $attempt = 0;
         $maxAttempts = 3;
         while ($attempt < $maxAttempts) {
-            sleep($attempt);
             $attempt++;
+            sleep($attempt*2);
 
             $html = $this->http->get($url);
             if (!$html) {
