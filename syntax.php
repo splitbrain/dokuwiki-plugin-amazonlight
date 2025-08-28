@@ -196,6 +196,10 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         if (!$partner) $partner = 'none';
         $region = self::REGIONS[$country];
 
+        // get homepage cookies first
+        $this->http->get('https://' . $region);
+
+
         $url = 'https://' . $region . '/dp/' . $asin;
 
         $attempt = 0;
