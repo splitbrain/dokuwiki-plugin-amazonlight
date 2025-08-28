@@ -54,7 +54,7 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
     public function handle($match, $state, $pos, Doku_Handler $handler)
     {
         $match = substr($match, 9, -2);
-        list($ctry, $asin) = explode(':', $match, 2);
+        list($ctry, $asin) = sexplode(':', $match, 2);
 
         // no country given?
         if (empty($asin)) {
@@ -69,7 +69,7 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
             'price' => $this->getConf('showprice'),
         );
         // ...can be overridden
-        list($asin, $more) = explode(' ', $asin, 2);
+        list($asin, $more) = sexplode(' ', $asin, 2);
         $params['asin'] = $asin;
 
         if (preg_match('/(\d+)x(\d+)/i', $more, $match)) {
