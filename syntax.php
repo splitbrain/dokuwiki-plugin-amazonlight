@@ -22,6 +22,8 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
         'jp' => 'www.amazon.co.jp',
     ];
 
+    protected DokuHTTPClient $http;
+
     /** @inheritDoc */
     public function getType()
     {
@@ -48,6 +50,24 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
     public function connectTo($mode)
     {
         $this->Lexer->addSpecialPattern('\{\{amazon>[\w:\\- =]+\}\}', $mode, 'plugin_amazonlight');
+    }
+
+
+    public function __construct()
+    {
+        $http = new DokuHTTPClient();
+        $http->headers['User-Agent'] = 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36';
+        $http->headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7';
+        $http->headers['Accept-Language'] = 'en-US,en;q=0.9';
+        $http->headers['Upgrade-Insecure-Requests'] = '1';
+        $http->headers['Sec-Ch-Ua'] = '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"';
+        $http->headers['Sec-Ch-Ua-Mobile'] = '?0';
+        $http->headers['Sec-Ch-Ua-Platform'] = '"Linux"';
+        $http->headers['Sec-Fetch-Dest'] = 'document';
+        $http->headers['Sec-Fetch-Mode'] = 'navigate';
+        $http->headers['Sec-Fetch-Site'] = 'none';
+        $http->headers['Sec-Fetch-User'] = '?1';
+        $this->http = $http;
     }
 
     /** @inheritDoc */
@@ -178,13 +198,22 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
 
         $url = 'https://' . $region . '/dp/' . $asin;
 
-        $http = new DokuHTTPClient();
-        $http->headers['User-Agent'] = 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
-        $html = $http->get($url);
-        if (!$html) {
-            throw new Exception('Failed to fetch data. Status ' . $http->status);
-        }
+        $attempt = 0;
+        $maxAttempts = 3;
+        while ($attempt < $maxAttempts) {
+            sleep($attempt);
+            $attempt++;
 
+            $html = $this->http->get($url);
+            if (!$html) {
+                if ($attempt < $maxAttempts) continue; // try a few times
+                throw new Exception('Failed to fetch data. Status ' . $this->http->status);
+            }
+            if (preg_match('/(captcha|api-services-support@amazon.com)/i', $html)) {
+                if ($attempt < $maxAttempts) continue; // try a few times
+                throw new Exception('Anti-Bot mechanisms triggered, cannot fetch data');
+            }
+        }
 
         $doc = new Document();
         $doc->html($html);
@@ -220,7 +249,7 @@ class syntax_plugin_amazonlight extends DokuWiki_Syntax_Plugin
     protected function extract(Document $doc, string $selector, $attr = null): string
     {
         $element = $doc->find($selector)->first();
-        if($element === null) {
+        if ($element === null) {
             return '';
         }
         if ($attr) {
